@@ -14,14 +14,14 @@ export async function POST(request: NextRequest) {
 
     // Action 1: Evaluate candidate's STAR answer
     if (action === "evaluate") {
-      const prompt = `You are a Principal Tech Recruiter and Hiring Manager.
+      const prompt = `You are a Principal Tech Recruiter and Senior Hiring Manager.
 Evaluate this interview answer using the STAR method (Situation, Task, Action, Result).
 
-Target Role: ${role || "Software Engineer / Product"}
+Target Role: ${role || "Software Engineer / Tech Lead"}
 Interview Question: "${question}"
 Candidate Answer: "${answer}"
 
-Provide feedback in this exact JSON structure (no markdown fences):
+Provide concise, high-impact feedback in this exact JSON structure (no markdown fences):
 {
   "score": 85,
   "starBreakdown": {
@@ -31,8 +31,8 @@ Provide feedback in this exact JSON structure (no markdown fences):
     "result": "Assessment of Result & Metrics (1-2 sentences)"
   },
   "strengths": ["strength 1", "strength 2"],
-  "improvements": ["improvement tip 1", "improvement tip 2"],
-  "improvedSample": "A rewritten top-tier version of this answer showcasing high impact."
+  "improvements": ["actionable improvement tip 1", "actionable improvement tip 2"],
+  "improvedSample": "A rewritten top-tier version of this answer showcasing high impact and metrics."
 }`
 
       try {
@@ -49,14 +49,14 @@ Provide feedback in this exact JSON structure (no markdown fences):
         data: {
           score: 82,
           starBreakdown: {
-            situation: "Clear context set for the challenge.",
-            task: "Clear objective outlined.",
-            action: "Good explanation of your personal contribution.",
-            result: "Add more quantifiable metrics (e.g. % improvement, time saved).",
+            situation: "Good framing of the problem context.",
+            task: "Clear assignment of responsibility.",
+            action: "Strong detail on tools and implementation steps taken.",
+            result: "Quantify business outcomes with specific % gains or metrics.",
           },
-          strengths: ["Strong problem-solving mindset", "Clear ownership"],
-          improvements: ["Quantify the business impact", "Highlight collaboration with stakeholders"],
-          improvedSample: "In my previous project, we faced a 40% latency spike. I led the migration of our indexing strategy, reducing query times by 65% and saving $8,000/month.",
+          strengths: ["Clear ownership", "Methodical approach to problem-solving"],
+          improvements: ["Include quantifiable business impact", "Highlight cross-functional communication"],
+          improvedSample: `In our project for ${role || "production"}, we observed a latency bottleneck during peak traffic. I led the architectural overhaul by introducing distributed caching and optimizing database indexes, reducing query latency by 62% and eliminating downtime.`,
         },
       })
     }
@@ -69,55 +69,64 @@ Provide feedback in this exact JSON structure (no markdown fences):
       db.collection("resumes").findOne({ userId: session.user.id }, { sort: { parsedAt: -1 } }),
     ])
 
-    const candidateRole = role || profile?.title || resume?.title || "Full Stack Engineer"
-    const skills = (resume?.skills || []).slice(0, 10).join(", ") || "React, TypeScript, Node.js, SQL"
+    const candidateRole = role || profile?.title || profile?.roles || resume?.title || "Full Stack Engineer"
+    const candidateSkills = (resume?.skills || []).slice(0, 10).join(", ") || "Software Engineering, Problem Solving, APIs"
+    const backgroundSummary = resume?.workHistory?.map((w: any) => `${w.role} at ${w.company}`).slice(0, 2).join(", ") || ""
 
-    const prompt = `Generate 5 realistic, high-impact interview questions for a candidate with the background below.
-Role: ${candidateRole}
-Skills: ${skills}
+    const prompt = `Generate 5 challenging, realistic, and highly tailored interview questions for this candidate.
 
-Return this exact JSON structure (no markdown fences):
+CANDIDATE:
+- Target Role: ${candidateRole}
+- Skills: ${candidateSkills}
+- Background: ${backgroundSummary}
+
+REQUIREMENTS:
+1. Tailor all 5 questions strictly to the domain of "${candidateRole}".
+2. Cover 5 categories: Behavioral, Technical Architecture, Problem Solving, Leadership & Impact, Role-Specific.
+3. Return ONLY pure valid JSON without markdown fences.
+
+JSON FORMAT:
 {
   "questions": [
     {
       "id": "q1",
       "category": "Behavioral",
-      "question": "Tell me about a time you had to resolve a high-stakes technical disagreement in your team.",
+      "question": "Behavioral question tailored to ${candidateRole}...",
       "difficulty": "Medium",
-      "keyFocus": "Conflict Resolution & Alignment",
-      "tip": "Use STAR. Focus on data-driven decision making and empathy."
+      "keyFocus": "Key focus area",
+      "tip": "STAR response tip"
     },
     {
       "id": "q2",
       "category": "Technical Architecture",
-      "question": "How would you design a scalable real-time notification system handling 100k events/sec?",
+      "question": "Technical architecture question tailored to ${candidateRole}...",
       "difficulty": "Hard",
-      "keyFocus": "System Design & Concurrency",
-      "tip": "Discuss message queues (Kafka/RabbitMQ), caching, and database indexing."
+      "keyFocus": "Key focus area",
+      "tip": "Architecture tip"
     },
     {
       "id": "q3",
       "category": "Problem Solving",
-      "question": "Describe a production bug you introduced or resolved under tight deadlines.",
+      "question": "Scenario or debugging problem question for ${candidateRole}...",
       "difficulty": "Medium",
-      "keyFocus": "Root Cause Analysis & Post-Mortem",
-      "tip": "Be honest about the mistake, emphasize rapid containment, and explain preventative safeguards."
+      "keyFocus": "Key focus area",
+      "tip": "Problem solving tip"
     },
     {
       "id": "q4",
       "category": "Leadership & Impact",
-      "question": "How do you prioritize technical debt against urgent feature delivery?",
+      "question": "Leadership or prioritization question for ${candidateRole}...",
       "difficulty": "Hard",
-      "keyFocus": "Business Acumen & Prioritization",
-      "tip": "Tie tech debt reduction directly to velocity and customer reliability."
+      "keyFocus": "Key focus area",
+      "tip": "Leadership tip"
     },
     {
       "id": "q5",
       "category": "Role-Specific",
-      "question": "What is your approach to ensuring performance and accessibility across modern web apps?",
-      "difficulty": "Easy",
-      "keyFocus": "Best Practices & Standards",
-      "tip": "Mention Core Web Vitals, semantic HTML, and automated testing."
+      "question": "Specialized deep-dive question for ${candidateRole}...",
+      "difficulty": "Medium",
+      "keyFocus": "Key focus area",
+      "tip": "Role specific tip"
     }
   ]
 }`
@@ -129,7 +138,7 @@ Return this exact JSON structure (no markdown fences):
         return NextResponse.json({ data: JSON.parse(jsonMatch[0]) })
       }
     } catch (e) {
-      console.warn("Gemini question generation failed, using structured default:", e)
+      console.warn("Gemini question generation failed, using tailored fallback:", e)
     }
 
     return NextResponse.json({
@@ -138,42 +147,42 @@ Return this exact JSON structure (no markdown fences):
           {
             id: "q1",
             category: "Behavioral",
-            question: "Tell me about a time you had to resolve a high-stakes technical disagreement in your team.",
+            question: `Tell me about a time you had to navigate conflicting stakeholder requirements while delivering a key project as a ${candidateRole}.`,
             difficulty: "Medium",
-            keyFocus: "Conflict Resolution & Alignment",
-            tip: "Use STAR. Focus on data-driven decision making and empathy.",
+            keyFocus: "Stakeholder Alignment & Negotiation",
+            tip: "Use the STAR framework. Focus on active listening, compromise, and data-backed trade-offs.",
           },
           {
             id: "q2",
             category: "Technical Architecture",
-            question: "How would you design a scalable real-time notification system handling 100k events/sec?",
+            question: `How would you architect a fault-tolerant, scalable system for ${candidateRole} requirements given high throughput?`,
             difficulty: "Hard",
-            keyFocus: "System Design & Concurrency",
-            tip: "Discuss message queues (Kafka/RabbitMQ), caching, and database indexing.",
+            keyFocus: "Scalability, Latency & Resilience",
+            tip: "Break down components: ingestion, caching, async queuing, database sharding, and monitoring.",
           },
           {
             id: "q3",
             category: "Problem Solving",
-            question: "Describe a production bug you introduced or resolved under tight deadlines.",
+            question: `Describe the most complex edge case or critical bug you resolved in a production environment.`,
             difficulty: "Medium",
-            keyFocus: "Root Cause Analysis & Post-Mortem",
-            tip: "Be honest about the mistake, emphasize rapid containment, and explain preventative safeguards.",
+            keyFocus: "Root Cause Analysis & Containment",
+            tip: "Explain your diagnostic steps, how you verified the fix, and post-incident prevention mechanisms.",
           },
           {
             id: "q4",
             category: "Leadership & Impact",
-            question: "How do you prioritize technical debt against urgent feature delivery?",
+            question: `How do you advocate for code quality, testing, and technical debt reduction when facing tight business deadlines?`,
             difficulty: "Hard",
-            keyFocus: "Business Acumen & Prioritization",
-            tip: "Tie tech debt reduction directly to velocity and customer reliability.",
+            keyFocus: "Engineering Rigor & Business Value",
+            tip: "Translate technical debt into tangible business metrics like release velocity and incident count.",
           },
           {
             id: "q5",
             category: "Role-Specific",
-            question: "What is your approach to ensuring performance and accessibility across modern web applications?",
-            difficulty: "Easy",
-            keyFocus: "Best Practices & Standards",
-            tip: "Mention Core Web Vitals, semantic HTML, and automated testing.",
+            question: `What emerging tools, patterns, or methodologies are you most excited to leverage in your next ${candidateRole} role?`,
+            difficulty: "Medium",
+            keyFocus: "Industry Curiosity & Continuous Learning",
+            tip: "Highlight hands-on experimentation with recent ecosystem tools and how they boost team output.",
           },
         ],
       },

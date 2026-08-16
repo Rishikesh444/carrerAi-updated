@@ -1,8 +1,7 @@
 const GEMINI_MODELS = [
-  "gemini-flash-lite-latest",
-  "gemini-3-flash-preview",
-  "gemma-4-26b-a4b-it",
-  "gemma-4-31b-it",
+  "gemini-2.5-flash",
+  "gemini-flash-latest",
+  "gemini-2.5-pro",
 ]
 
 export async function generateGeminiAI(prompt: string, systemInstruction?: string): Promise<string> {

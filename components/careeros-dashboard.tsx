@@ -42,14 +42,50 @@ import {
   Zap,
 } from "lucide-react"
 import Image from "next/image"
+import { AppleProfileEditor } from "./apple-profile"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 type Tab = "Overview" | "Profile" | "Resume" | "Job Matches" | "Interview Prep" | "Skills" | "Learning Plan" | "Settings"
 
 type Job = {
-  id: string; company: string; role: string; match: number;
-  salary: string; location: string; skills: string[]
+  id: string
+  company: string
+  role: string
+  match: number
+  salary: string
+  location: string
+  skills: string[]
+  applyUrl?: string
+  source?: string
+  description?: string
+  logoUrl?: string
   color?: string
+  projectsRecommended?: { name: string; tech: string; description: string; githubQuery: string }[]
+}
+
+function CompanyLogo({ logoUrl, company, className = "size-10" }: { logoUrl?: string; company: string; className?: string }) {
+  const [error, setError] = useState(false)
+
+  if (logoUrl && !error) {
+    return (
+      <div className={`relative flex shrink-0 items-center justify-center rounded-xl bg-white p-1.5 shadow-sm border border-white/20 overflow-hidden ${className}`}>
+        <img
+          src={logoUrl}
+          alt={company}
+          className="max-h-full max-w-full object-contain"
+          onError={() => setError(true)}
+          loading="lazy"
+        />
+      </div>
+    )
+  }
+
+  const initial = company ? company[0].toUpperCase() : "J"
+  return (
+    <div className={`grid shrink-0 place-items-center rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-600 font-bold text-white shadow-sm ${className}`}>
+      {initial}
+    </div>
+  )
 }
 
 type Profile = {
@@ -323,7 +359,7 @@ export function CareerOSDashboard() {
             <Overview go={go} completed={completed} setCompleted={setCompleted} setOverlay={setOverlay} setSelectedJob={setSelectedJob} jobs={jobs} profile={profile} />
           )}
           {active === "Profile" && (
-            <ProfileEditor profile={profile} setProfile={setProfile} setUploadOpen={setUploadOpen} loading={profileLoading} />
+            <AppleProfileEditor profile={profile} setProfile={setProfile} setUploadOpen={setUploadOpen} loading={profileLoading} />
           )}
           {active === "Resume" && (
             <ResumePage setUploadOpen={setUploadOpen} parsedResume={parsedResume} profile={profile} />
@@ -480,22 +516,23 @@ function Overview({ go, completed, setCompleted, setOverlay, setSelectedJob, job
           <div className="mb-5 flex items-center justify-between">
             <div>
               <h3 className="font-semibold tracking-tight">Top job matches</h3>
-              <p className="mt-1 text-sm text-slate-400">Curated for your career path</p>
+              <p className="mt-1 text-sm text-slate-400">Curated with real company salaries in INR (₹)</p>
             </div>
             <button onClick={() => go("Job Matches")} className="text-sm font-medium text-indigo-300 hover:text-indigo-200">See all jobs</button>
           </div>
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3">
             {displayJobs.length === 0 && (
               <p className="text-sm text-slate-500 py-4 text-center">Loading job matches...</p>
             )}
             {displayJobs.map((job) => (
-              <button key={job.id} onClick={() => { setSelectedJob(job); setOverlay("job") }} className="flex items-center gap-3 rounded-xl p-2.5 text-left transition-colors hover:bg-white/5">
-                <div className={`grid size-10 place-items-center rounded-lg text-xs font-bold text-white ${job.color}`}>{job.company[0]}</div>
+              <button key={job.id} onClick={() => { setSelectedJob(job); setOverlay("job") }} className="flex items-center gap-3.5 rounded-xl p-2.5 text-left transition-colors hover:bg-white/5 border border-transparent hover:border-white/5">
+                <CompanyLogo logoUrl={job.logoUrl} company={job.company} className="size-10" />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{job.role}</p>
-                  <p className="text-xs text-slate-500">{job.company} · {job.location}</p>
+                  <p className="truncate text-sm font-semibold text-white">{job.role}</p>
+                  <p className="text-xs text-slate-400 truncate">{job.company} · {job.location}</p>
+                  <p className="text-[11px] font-medium text-violet-300 mt-0.5">{job.salary}</p>
                 </div>
-                <span className="rounded-full border border-emerald-500/30 bg-emerald-500/15 px-2 py-1 text-xs font-medium text-emerald-300">{job.match}%</span>
+                <span className="rounded-full border border-emerald-500/30 bg-emerald-500/15 px-2.5 py-1 text-xs font-bold text-emerald-300">{job.match}%</span>
                 <ChevronRight className="size-4 text-slate-500" />
               </button>
             ))}
@@ -664,9 +701,7 @@ function JobMatchesPage({ jobs, query, setQuery, setSelectedJob, setOverlay }: {
             <Card key={job.id} className="flex flex-col justify-between p-6">
               <div>
                 <div className="flex items-center gap-3.5">
-                  <div className={`grid size-12 place-items-center rounded-xl text-base font-bold text-white shadow-md ${job.color || "bg-indigo-600"}`}>
-                    {job.company[0]}
-                  </div>
+                  <CompanyLogo logoUrl={job.logoUrl} company={job.company} className="size-12 p-2" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="font-semibold text-white truncate text-base">{job.role}</p>
@@ -679,9 +714,9 @@ function JobMatchesPage({ jobs, query, setQuery, setSelectedJob, setOverlay }: {
                 </div>
 
                 <div className="mt-4 flex items-center justify-between text-sm">
-                  <span className="font-semibold text-white">{job.salary}</span>
+                  <span className="font-bold text-white text-base">{job.salary}</span>
                   <span className="text-xs text-indigo-300 font-medium bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-0.5 rounded-full">
-                    Source: {job.source || "LinkedIn"}
+                    Verified: {job.source || "Company Portal"}
                   </span>
                 </div>
 
@@ -953,10 +988,10 @@ function SkillsPage({ profile, parsedResume, setOverlay }: {
   const [loading, setLoading] = useState(true)
   const [customSkill, setCustomSkill] = useState("")
 
-  const loadSkills = useCallback(async () => {
+  const loadSkills = useCallback(async (refresh = false) => {
     setLoading(true)
     try {
-      const res = await fetch("/api/skills")
+      const res = await fetch(`/api/skills${refresh ? "?refresh=true" : ""}`)
       if (res.ok) {
         const json = await res.json()
         setData(json.data)
@@ -967,17 +1002,28 @@ function SkillsPage({ profile, parsedResume, setOverlay }: {
   }, [])
 
   useEffect(() => {
-    loadSkills()
+    loadSkills(false)
   }, [loadSkills])
 
-  const handleAddSkill = () => {
+  const handleAddSkill = async () => {
     if (!customSkill.trim() || !data) return
-    const newSkill = { name: customSkill.trim(), level: "Proficient", match: 80, status: "Added" }
+    const skillName = customSkill.trim()
+    const newSkill = { name: skillName, level: "Proficient", match: 80, status: "Strong" }
     setData({
       ...data,
       categories: data.categories.map((cat, i) => i === 0 ? { ...cat, skills: [...cat.skills, newSkill] } : cat),
     })
     setCustomSkill("")
+
+    try {
+      await fetch("/api/skills", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ skillName }),
+      })
+    } catch (e) {
+      console.warn("Failed to persist custom skill:", e)
+    }
   }
 
   return (
@@ -989,7 +1035,7 @@ function SkillsPage({ profile, parsedResume, setOverlay }: {
           <p className="mt-2 text-sm text-slate-400">Gemini AI analyzes your detected skills against the top requirements for {profile.title || "your target role"}.</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={loadSkills} disabled={loading} className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-slate-300 hover:bg-white/10 transition-colors">
+          <button onClick={() => loadSkills(true)} disabled={loading} className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-slate-300 hover:bg-white/10 transition-colors">
             <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} /> Refresh Analysis
           </button>
           <button onClick={() => setOverlay("ai")} className="inline-flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-2.5 text-sm font-medium text-white shadow-md hover:bg-indigo-400 transition-colors">
@@ -1099,10 +1145,10 @@ function LearningPlanPage({ profile, setOverlay }: {
   const [plan, setPlan] = useState<LearningPlanData | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const loadPlan = useCallback(async () => {
+  const loadPlan = useCallback(async (regenerate = false) => {
     setLoading(true)
     try {
-      const res = await fetch("/api/learning-plan")
+      const res = await fetch(`/api/learning-plan${regenerate ? "?regenerate=true" : ""}`)
       if (res.ok) {
         const { data } = await res.json()
         setPlan(data)
@@ -1113,22 +1159,36 @@ function LearningPlanPage({ profile, setOverlay }: {
   }, [])
 
   useEffect(() => {
-    loadPlan()
+    loadPlan(false)
   }, [loadPlan])
 
-  const toggleTask = (weekNumber: number, taskId: string) => {
+  const toggleTask = async (weekNumber: number, taskId: string) => {
     if (!plan) return
+    const week = plan.weeks.find((w) => w.weekNumber === weekNumber)
+    const task = week?.tasks.find((t) => t.id === taskId)
+    const newCompleted = !task?.completed
+
     setPlan({
       ...plan,
       weeks: plan.weeks.map((w) =>
         w.weekNumber === weekNumber
           ? {
             ...w,
-            tasks: w.tasks.map((t) => (t.id === taskId ? { ...t, completed: !t.completed } : t)),
+            tasks: w.tasks.map((t) => (t.id === taskId ? { ...t, completed: newCompleted } : t)),
           }
           : w
       ),
     })
+
+    try {
+      await fetch("/api/learning-plan", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ weekNumber, taskId, completed: newCompleted }),
+      })
+    } catch (e) {
+      console.warn("Failed to persist task status:", e)
+    }
   }
 
   const allTasks = plan?.weeks.flatMap((w) => w.tasks) || []
@@ -1144,7 +1204,7 @@ function LearningPlanPage({ profile, setOverlay }: {
           <p className="mt-2 text-sm text-slate-400">Curated weekly syllabus by Gemini AI to rapidly prepare you for {profile.title || "your target role"}.</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={loadPlan} disabled={loading} className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-slate-300 hover:bg-white/10 transition-colors">
+          <button onClick={() => loadPlan(true)} disabled={loading} className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-slate-300 hover:bg-white/10 transition-colors">
             <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} /> Regenerate Roadmap
           </button>
           <button onClick={() => setOverlay("ai")} className="inline-flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-2.5 text-sm font-medium text-white shadow-md hover:bg-indigo-400 transition-colors">
@@ -1878,31 +1938,55 @@ function Overlay({ kind, setOverlay, job, chatMessages, chatLoading, onSendChat,
         )}
 
         {kind === "job" && job && (
-          <div className="overflow-y-auto p-5">
-            <div className="flex items-center gap-3">
-              <div className={`grid size-12 place-items-center rounded-xl text-lg font-bold text-white ${job.color}`}>{job.company[0]}</div>
+          <div className="overflow-y-auto p-6 space-y-6">
+            <div className="flex items-center gap-4">
+              <CompanyLogo logoUrl={job.logoUrl} company={job.company} className="size-14 p-2 text-xl" />
               <div>
-                <h3 className="font-semibold text-white">{job.role}</h3>
-                <p className="text-sm text-slate-400">{job.company} · {job.location}</p>
+                <h3 className="font-bold text-white text-lg">{job.role}</h3>
+                <p className="text-sm text-slate-400 mt-0.5">{job.company} · {job.location}</p>
+                <span className="inline-block mt-2 rounded-md bg-indigo-500/15 border border-indigo-500/25 px-2.5 py-0.5 text-xs font-semibold text-indigo-300">
+                  Source: {job.source || "Company Portal"}
+                </span>
               </div>
             </div>
-            <div className="mt-6 grid grid-cols-2 gap-3">
-              <div className="rounded-xl bg-white/5 p-3">
-                <p className="text-xs text-slate-500">Match Score</p>
-                <p className="mt-1 text-xl font-semibold text-emerald-300">{job.match}%</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-2xl bg-white/5 border border-white/5 p-3.5">
+                <p className="text-xs text-slate-400 font-medium">Match Score</p>
+                <p className="mt-1 text-2xl font-bold text-emerald-300">{job.match}%</p>
               </div>
-              <div className="rounded-xl bg-white/5 p-3">
-                <p className="text-xs text-slate-500">Salary</p>
-                <p className="mt-1 text-sm font-semibold text-white">{job.salary}</p>
+              <div className="rounded-2xl bg-white/5 border border-white/5 p-3.5">
+                <p className="text-xs text-slate-400 font-medium">Salary in Rupees</p>
+                <p className="mt-1 text-base font-bold text-white">{job.salary}</p>
               </div>
             </div>
-            <h3 className="mt-6 font-medium text-white">Required skills</h3>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {job.skills.map((skill) => <span key={skill} className="rounded-full bg-indigo-500/15 px-3 py-1.5 text-xs text-indigo-200">{skill}</span>)}
+            {job.description && (
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Role Overview</h4>
+                <p className="text-sm text-slate-300 leading-relaxed bg-white/5 p-3.5 rounded-2xl border border-white/5">
+                  {job.description}
+                </p>
+              </div>
+            )}
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Required Skills</h4>
+              <div className="flex flex-wrap gap-1.5">
+                {job.skills.map((skill) => (
+                  <span key={skill} className="rounded-lg bg-indigo-500/15 border border-indigo-500/20 px-3 py-1 text-xs font-medium text-indigo-200">
+                    {skill}
+                  </span>
+                ))}
+              </div>
             </div>
-            <button className="mt-8 flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-500 py-3 text-sm font-medium text-white hover:bg-indigo-400 transition-colors shadow-md">
-              Apply Now <Send className="size-4" />
-            </button>
+            {job.applyUrl && (
+              <a
+                href={job.applyUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-indigo-500 py-3.5 text-sm font-semibold text-white hover:bg-indigo-400 transition-colors shadow-lg shadow-indigo-500/25"
+              >
+                Apply on {job.source || "Company Portal"} <ExternalLink className="size-4" />
+              </a>
+            )}
           </div>
         )}
 
